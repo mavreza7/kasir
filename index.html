@@ -158,4 +158,35 @@ function renderChart(data){
   const ctx = document.getElementById('chart');
 
   const labels = data.detail.map(d=>d[0]);
-  const values = data.detail.map(d=>d[
+  const values = data.detail.map(d=>d[2]);
+
+  if(chart){chart.destroy();}
+
+  Chart.defaults.color="#ffffff";
+
+  chart = new Chart(ctx,{
+    type:'bar',
+    data:{ labels:labels, datasets:[{label:'Penjualan',data:values}] }
+  });
+}
+
+function downloadPDF(){
+  if(!lastData){alert('Hitung dulu!');return;}
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.text("Laporan Kasir",10,10);
+  let y=20;
+
+  lastData.detail.forEach(d=>{
+    doc.text(`${d[0]} (${d[1]}): ${rupiah(d[2])}`,10,y);
+    y+=10;
+  });
+
+  doc.text(`Total: ${rupiah(lastData.totalJual)}`,10,y+10);
+  doc.save("laporan.pdf");
+}
+</script>
+</body>
+</html>
