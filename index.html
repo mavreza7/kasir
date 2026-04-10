@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kasir Matcha Kyoto PRO</title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,18 +13,52 @@
 <style>
 body {
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(135deg,#0f172a,#020617);
-  color: #ffffff;
+  color: #fff;
+  margin: 0;
 }
 
-* { color: #ffffff !important; }
+/* 🎥 VIDEO BACKGROUND */
+.video-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -2;
+}
 
-.container-box { max-width: 1100px; margin: auto; }
+.video-bg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.4) blur(1px);
+}
+
+/* DARK OVERLAY */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(2, 6, 23, 0.65);
+  z-index: -1;
+}
+
+.container-box {
+  max-width: 1100px;
+  margin: auto;
+  position: relative;
+  z-index: 1;
+}
 
 .card {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.08);
   backdrop-filter: blur(12px);
   border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .menu-item {
@@ -45,14 +80,16 @@ body {
   border-radius: 50%;
   border: none;
   background: #22c55e;
+  color: white;
 }
 
 .qty-input {
   width: 60px;
   text-align: center;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.15);
   border: none;
   border-radius: 8px;
+  color: white;
 }
 
 .btn-main {
@@ -60,22 +97,34 @@ body {
   border: none;
   border-radius: 10px;
   padding: 10px;
+  color: white;
 }
 </style>
 </head>
 
 <body>
-<div class="container-box py-4">
-<h2 class="text-center mb-4">☕ Kasir Matcha Kyoto PRO</h2>
 
-<div class="card p-4">
-<div id="menu"></div>
-<button class="btn btn-main w-100 mt-3" onclick="hitung()">Hitung</button>
+<!-- 🎥 VIDEO -->
+<div class="video-bg">
+  <video autoplay muted loop playsinline>
+    <source src="bg.mp4" type="video/mp4">
+  </video>
 </div>
 
-<div id="hasil" class="mt-4"></div>
-<canvas id="chart" class="mt-4"></canvas>
-<button class="btn btn-warning w-100 mt-3" onclick="downloadPDF()">Download PDF</button>
+<div class="container-box py-4">
+  <h2 class="text-center mb-4">☕ Kasir Matcha Kyoto PRO</h2>
+
+  <div class="card p-4">
+    <div id="menu"></div>
+    <button class="btn btn-main w-100 mt-3" onclick="hitung()">Hitung</button>
+  </div>
+
+  <div id="hasil" class="mt-4"></div>
+  <canvas id="chart" class="mt-4"></canvas>
+
+  <button class="btn btn-warning w-100 mt-3" onclick="downloadPDF()">
+    Download PDF
+  </button>
 </div>
 
 <script>
@@ -86,107 +135,145 @@ const menu = {
   "MATCHA SEASALT": {harga:15000,hpp:8599}
 };
 
-function rupiah(x){return 'Rp'+x.toLocaleString('id-ID');}
+function rupiah(x){
+  return 'Rp ' + x.toLocaleString('id-ID');
+}
 
 const menuDiv = document.getElementById('menu');
-
 let qtyData = {};
+let chart;
+let lastData = null;
+
+function safeKey(str){
+  return str.replace(/\s/g,'-');
+}
 
 for(let m in menu){
   qtyData[m] = 0;
+
   menuDiv.innerHTML += `
   <div class="menu-item">
     <div>
       <strong>${m}</strong><br>
       <small>${rupiah(menu[m].harga)}</small>
     </div>
+
     <div class="qty-box">
       <button class="qty-btn" onclick="ubahQty('${m}',-1)">-</button>
-      <input type="number" min="0" value="0" class="qty-input" id="input-${m}" oninput="syncInput('${m}')">
+
+      <input type="number"
+        min="0"
+        value="0"
+        class="qty-input"
+        id="input-${safeKey(m)}"
+        oninput="syncInput('${m}')">
+
       <button class="qty-btn" onclick="ubahQty('${m}',1)">+</button>
     </div>
   </div>`;
 }
 
 function ubahQty(nama, val){
-  qtyData[nama] = Math.max(0, qtyData[nama] + val);
-  document.getElementById('input-'+nama).value = qtyData[nama];
+  qtyData[nama] = Math.max(0, (qtyData[nama] || 0) + val);
+  document.getElementById('input-'+safeKey(nama)).value = qtyData[nama];
 }
 
 function syncInput(nama){
-  let val = parseInt(document.getElementById('input-'+nama).value) || 0;
-  qtyData[nama] = Math.max(0,val);
+  let el = document.getElementById('input-'+safeKey(nama));
+  qtyData[nama] = Math.max(0, parseInt(el.value) || 0);
 }
 
-let lastData=null;
-let chart;
-
 function hitung(){
-  let totalJual=0, totalUntung=0;
-  let detail=[];
+  let totalJual = 0;
+  let totalHPP = 0;
+  let detail = [];
 
   for(let m in menu){
     let qty = qtyData[m];
-    let harga = menu[m].harga;
-    let hpp = menu[m].hpp;
-    let untung = harga-hpp;
 
-    let total = harga*qty;
-    let u = untung*qty;
+    let jual = menu[m].harga * qty;
+    let hpp = menu[m].hpp * qty;
 
-    totalJual+=total;
-    totalUntung+=u;
+    totalJual += jual;
+    totalHPP += hpp;
 
-    detail.push([m, qty, total]);
+    detail.push([m, qty, jual]);
   }
 
-  let modal = totalJual-totalUntung;
+  let profit = totalJual - totalHPP;
 
-  lastData={totalJual,totalUntung,modal,detail};
+  lastData = {totalJual, totalHPP, profit, detail};
 
   document.getElementById('hasil').innerHTML = `
   <div class="row text-center">
-    <div class="col-md-4"><div class="card p-3"><h5>Penjualan</h5><h3>${rupiah(totalJual)}</h3></div></div>
-    <div class="col-md-4"><div class="card p-3"><h5>Untung</h5><h3>${rupiah(totalUntung)}</h3></div></div>
-    <div class="col-md-4"><div class="card p-3"><h5>Modal</h5><h3>${rupiah(modal)}</h3></div></div>
+    <div class="col-md-4">
+      <div class="card p-3">
+        <h5>Penjualan</h5>
+        <h3>${rupiah(totalJual)}</h3>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card p-3">
+        <h5>Modal (HPP)</h5>
+        <h3>${rupiah(totalHPP)}</h3>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card p-3">
+        <h5>Profit</h5>
+        <h3>${rupiah(profit)}</h3>
+      </div>
+    </div>
   </div>`;
 
-  renderChart(lastData);
+  renderChart(detail);
 }
 
 function renderChart(data){
   const ctx = document.getElementById('chart');
 
-  const labels = data.detail.map(d=>d[0]);
-  const values = data.detail.map(d=>d[2]);
+  const labels = data.map(d => d[0]);
+  const values = data.map(d => d[2]);
 
-  if(chart){chart.destroy();}
+  if(chart) chart.destroy();
 
-  Chart.defaults.color="#ffffff";
-
-  chart = new Chart(ctx,{
-    type:'bar',
-    data:{ labels:labels, datasets:[{label:'Penjualan',data:values}] }
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Penjualan Produk',
+        data: values
+      }]
+    }
   });
 }
 
 function downloadPDF(){
-  if(!lastData){alert('Hitung dulu!');return;}
+  if(!lastData) return alert("Hitung dulu!");
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.text("Laporan Kasir",10,10);
-  let y=20;
+  doc.text("Laporan Kasir Matcha Kyoto", 10, 10);
 
-  lastData.detail.forEach(d=>{
-    doc.text(`${d[0]} (${d[1]}): ${rupiah(d[2])}`,10,y);
-    y+=10;
+  let y = 20;
+
+  lastData.detail.forEach(d => {
+    doc.text(`${d[0]} x${d[1]} = ${rupiah(d[2])}`, 10, y);
+    y += 10;
   });
 
-  doc.text(`Total: ${rupiah(lastData.totalJual)}`,10,y+10);
-  doc.save("laporan.pdf");
+  y += 10;
+  doc.text(`Total Penjualan: ${rupiah(lastData.totalJual)}`, 10, y);
+  doc.text(`Modal (HPP): ${rupiah(lastData.totalHPP)}`, 10, y+10);
+  doc.text(`Profit: ${rupiah(lastData.profit)}`, 10, y+20);
+
+  doc.save("laporan-kasir.pdf");
 }
 </script>
+
 </body>
 </html>
