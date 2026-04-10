@@ -3,63 +3,98 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kasir Matcha Kyoto</title>
+<title>Kasir Matcha Kyoto Pro</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
 body {
   font-family: 'Poppins', sans-serif;
-  background: url('https://images.unsplash.com/photo-1509042239860-f550ce710b93') no-repeat center center fixed;
-  background-size: cover;
-  color: #ffffff;
+  background: linear-gradient(135deg,#0f172a,#020617);
+  color: #fff;
 }
 
-body::before {
-  content: '';
-  position: fixed;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.65);
-  z-index: -1;
-}
-
-* {
-  color: #ffffff !important;
+.container-box {
+  max-width: 1100px;
+  margin: auto;
 }
 
 .card {
-  background: rgba(255,255,255,0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
   border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
-input {
-  background: rgba(255,255,255,0.2) !important;
-  border: none !important;
-  color: white !important;
+.title {
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 
-.btn-custom {
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.qty-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qty-btn {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: none;
+  background: #22c55e;
+  color: white;
+  font-weight: bold;
+}
+
+.qty-number {
+  min-width: 30px;
+  text-align: center;
+}
+
+.btn-main {
   background: linear-gradient(45deg,#22c55e,#16a34a);
   border: none;
   color: white;
+  border-radius: 10px;
+  padding: 10px;
 }
+
+.summary-box h3 {
+  font-weight: 700;
+}
+
+.chart-box {
+  margin-top: 20px;
+}
+
 </style>
 </head>
+
 <body>
-<div class="container py-5">
-<h2 class="text-center mb-4">🍵 Kasir Matcha Kyoto</h2>
+<div class="container-box py-4">
+<h2 class="text-center title mb-4">☕ Kasir Matcha Kyoto PRO</h2>
 
 <div class="card p-4">
-<div class="row" id="menu"></div>
-<button class="btn btn-custom w-100 mt-3" onclick="hitung()">Hitung</button>
+<div id="menu"></div>
+<button class="btn btn-main w-100 mt-3" onclick="hitung()">Hitung</button>
 </div>
 
 <div id="hasil" class="mt-4"></div>
-<canvas id="chart" class="mt-4"></canvas>
+
+<div class="chart-box">
+<canvas id="chart"></canvas>
+</div>
+
 <button class="btn btn-warning w-100 mt-3" onclick="downloadPDF()">Download PDF</button>
 </div>
 
@@ -74,15 +109,31 @@ const menu = {
 function rupiah(x){return 'Rp'+x.toLocaleString('id-ID');}
 
 const menuDiv = document.getElementById('menu');
+
+let qtyData = {};
+
 for(let m in menu){
+  qtyData[m] = 0;
   menuDiv.innerHTML += `
-  <div class="col-md-6 mb-3">
-    <label>${m}</label>
-    <input type="number" id="${m}" class="form-control" value="0">
+  <div class="menu-item">
+    <div>
+      <strong>${m}</strong><br>
+      <small>${rupiah(menu[m].harga)}</small>
+    </div>
+    <div class="qty-box">
+      <button class="qty-btn" onclick="ubahQty('${m}',-1)">-</button>
+      <div class="qty-number" id="qty-${m}">0</div>
+      <button class="qty-btn" onclick="ubahQty('${m}',1)">+</button>
+    </div>
   </div>`;
 }
 
-let lastData = null;
+function ubahQty(nama, val){
+  qtyData[nama] = Math.max(0, qtyData[nama] + val);
+  document.getElementById('qty-'+nama).innerText = qtyData[nama];
+}
+
+let lastData=null;
 let chart;
 
 function hitung(){
@@ -90,10 +141,10 @@ function hitung(){
   let detail=[];
 
   for(let m in menu){
-    let qty = parseInt(document.getElementById(m).value)||0;
+    let qty = qtyData[m];
     let harga = menu[m].harga;
     let hpp = menu[m].hpp;
-    let untung = harga - hpp;
+    let untung = harga-hpp;
 
     let total = harga*qty;
     let u = untung*qty;
@@ -101,33 +152,18 @@ function hitung(){
     totalJual+=total;
     totalUntung+=u;
 
-    detail.push([m, qty, total, u]);
+    detail.push([m, qty, total]);
   }
 
-  let modal = totalJual - totalUntung;
+  let modal = totalJual-totalUntung;
 
-  lastData = {totalJual,totalUntung,modal,detail};
+  lastData={totalJual,totalUntung,modal,detail};
 
   document.getElementById('hasil').innerHTML = `
   <div class="row text-center">
-    <div class="col-md-4">
-      <div class="card p-3">
-        <h5>Penjualan</h5>
-        <h3>${rupiah(totalJual)}</h3>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card p-3">
-        <h5>Untung</h5>
-        <h3>${rupiah(totalUntung)}</h3>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="card p-3">
-        <h5>Modal</h5>
-        <h3>${rupiah(modal)}</h3>
-      </div>
-    </div>
+    <div class="col-md-4"><div class="card p-3 summary-box"><h5>Penjualan</h5><h3>${rupiah(totalJual)}</h3></div></div>
+    <div class="col-md-4"><div class="card p-3 summary-box"><h5>Untung</h5><h3>${rupiah(totalUntung)}</h3></div></div>
+    <div class="col-md-4"><div class="card p-3 summary-box"><h5>Modal</h5><h3>${rupiah(modal)}</h3></div></div>
   </div>`;
 
   renderChart(lastData);
@@ -136,21 +172,18 @@ function hitung(){
 function renderChart(data){
   const ctx = document.getElementById('chart');
 
-  const labels = data.detail.map(d => d[0]);
-  const values = data.detail.map(d => d[2]);
+  const labels = data.detail.map(d=>d[0]);
+  const values = data.detail.map(d=>d[2]);
 
-  if(chart){ chart.destroy(); }
+  if(chart){chart.destroy();}
 
-  Chart.defaults.color = "#ffffff";
+  Chart.defaults.color="#ffffff";
 
-  chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Penjualan',
-        data: values
-      }]
+  chart = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[{label:'Penjualan',data:values}]
     }
   });
 }
@@ -161,7 +194,7 @@ function downloadPDF(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  doc.text("Laporan Kasir Matcha",10,10);
+  doc.text("Laporan Kasir",10,10);
   let y=20;
 
   lastData.detail.forEach(d=>{
@@ -170,8 +203,6 @@ function downloadPDF(){
   });
 
   doc.text(`Total: ${rupiah(lastData.totalJual)}`,10,y+10);
-  doc.text(`Untung: ${rupiah(lastData.totalUntung)}`,10,y+20);
-
   doc.save("laporan.pdf");
 }
 </script>
