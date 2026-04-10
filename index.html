@@ -11,13 +11,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 
 <style>
+/* ===== GLOBAL ===== */
 body {
   font-family: 'Poppins', sans-serif;
   margin: 0;
-  color: white;
+  color: #fff;
 }
 
-/* 🎥 VIDEO BACKGROUND */
+/* ===== FONT PUTIH AMAN ===== */
+h1, h2, h3, h4, h5, h6, p, small, strong, label {
+  color: #fff;
+}
+
+input, textarea {
+  color: #fff;
+}
+
+input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
+
+/* ===== VIDEO BACKGROUND ===== */
 .video-bg {
   position: fixed;
   top: 0;
@@ -35,7 +49,7 @@ body {
   filter: brightness(0.45) blur(1px);
 }
 
-/* DARK OVERLAY */
+/* ===== DARK OVERLAY ===== */
 body::before {
   content: "";
   position: fixed;
@@ -43,10 +57,11 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.65);
   z-index: -1;
 }
 
+/* ===== CONTAINER ===== */
 .container-box {
   max-width: 1100px;
   margin: auto;
@@ -54,6 +69,7 @@ body::before {
   z-index: 1;
 }
 
+/* ===== CARD GLASS ===== */
 .card {
   background: rgba(255,255,255,0.08);
   backdrop-filter: blur(12px);
@@ -61,6 +77,7 @@ body::before {
   border: 1px solid rgba(255,255,255,0.1);
 }
 
+/* ===== MENU ===== */
 .menu-item {
   display: flex;
   justify-content: space-between;
@@ -68,6 +85,7 @@ body::before {
   margin-bottom: 15px;
 }
 
+/* ===== QTY ===== */
 .qty-box {
   display: flex;
   align-items: center;
@@ -92,6 +110,7 @@ body::before {
   color: white;
 }
 
+/* ===== BUTTON ===== */
 .btn-main {
   background: linear-gradient(45deg,#22c55e,#16a34a);
   border: none;
@@ -106,12 +125,13 @@ body::before {
 
 <!-- 🎥 VIDEO BACKGROUND -->
 <div class="video-bg">
-  <video autoplay muted loop playsinline>
-    <source src="./bg.mp4" type="video/mp4">
+  <video autoplay muted loop playsinline preload="auto">
+    <source src="/bg.mp4" type="video/mp4">
   </video>
 </div>
 
 <div class="container-box py-4">
+
   <h2 class="text-center mb-4">☕ Kasir Matcha Kyoto PRO</h2>
 
   <div class="card p-4">
@@ -125,6 +145,7 @@ body::before {
   <button class="btn btn-warning w-100 mt-3" onclick="downloadPDF()">
     Download PDF
   </button>
+
 </div>
 
 <script>
